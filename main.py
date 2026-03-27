@@ -29,12 +29,23 @@ class PellaBot(commands.Bot):
 
 bot = PellaBot()
 
+# --- THE SKELETON KEY SYNC ---
+@bot.command(name="quicksync")
+async def quicksync(ctx):
+    if ctx.author.id not in AUTHORIZED_USERS: return
+    await ctx.send("📡 Forcing Global Command Sync... Please wait.")
+    try:
+        synced = await bot.tree.sync()
+        await ctx.send(f"✅ Success! {len(synced)} slash commands (including /botdash) are now registered globally. (May take a few mins to appear).")
+    except Exception as e:
+        await ctx.send(f"❌ Sync Error: {e}")
+
+# --- THE SLASH COMMAND ---
 @bot.tree.command(name="botdash", description="Manitoba Global Operations Bot Dashboard")
 async def botdash(interaction: discord.Interaction):
     if interaction.user.id not in AUTHORIZED_USERS:
         return await interaction.response.send_message("❌ Access Denied: Unauthorized Developer.", ephemeral=True)
 
-    # YOUR EXACT JSON STRUCTURE
     payload = {
         "flags": 32768,
         "components": [
@@ -82,7 +93,6 @@ async def botdash(interaction: discord.Interaction):
         ]
     }
 
-    # Using the raw API interaction response to ensure the JSON components render correctly
     headers = {"Authorization": f"Bot {bot.http.token}", "Content-Type": "application/json"}
     url = f"https://discord.com/api/v10/interactions/{interaction.id}/{interaction.token}/callback"
     
@@ -91,15 +101,14 @@ async def botdash(interaction: discord.Interaction):
 
 @bot.event
 async def on_interaction(interaction: discord.Interaction):
-    # Handling the custom_id actions from your JSON
     if interaction.type == discord.InteractionType.component:
         cid = interaction.data.get("custom_id")
         
-        if cid == "p_284757363318067206": # Set Custom Status
+        if cid == "p_284757363318067206":
             if interaction.user.id not in AUTHORIZED_USERS: return
             await interaction.response.send_modal(StatusModal())
             
-        elif cid == "p_284757410839531528": # Sync Global Slash Commands
+        elif cid == "p_284757410839531528":
             if interaction.user.id not in AUTHORIZED_USERS: return
             await interaction.response.defer(ephemeral=True)
             try:
@@ -115,5 +124,3 @@ async def ping(ctx):
 TOKEN = os.getenv('BOT_TOKEN')
 if TOKEN:
     bot.run(TOKEN)
-else:
-    print("❌ ERROR: 'BOT_TOKEN' not found in Environment Variables!")
